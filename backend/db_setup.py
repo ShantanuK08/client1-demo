@@ -1,7 +1,7 @@
 import sqlite3
 
 # Connect to the database (or create it if it doesn't exist)
-con = sqlite3.connect('example.db')
+con = sqlite3.connect('TeamManager.db')
 
 # Create a cursor object
 cur = con.cursor()
