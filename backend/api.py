@@ -22,8 +22,16 @@ def init_db():
         ''')
         conn.commit()
 
+# GET all teams and POST new team
 @app.route('/teams', methods=['GET', 'POST'])
 def teams():
+    if request.method == 'GET':
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM teams")
+            teams = cursor.fetchall()
+            return jsonify(teams), 200
+
     if request.method == 'POST':
         data = request.get_json()
         name = data.get('name')
@@ -36,17 +44,42 @@ def teams():
         with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
             cursor.execute("INSERT INTO teams (name, coach, city) VALUES (?, ?, ?)", (name, coach, city))
+            team_id = cursor.lastrowid
             conn.commit()
-        return jsonify({"message": "Team added successfully"}), 201
+            return jsonify({"message": "Team added successfully", "id": team_id}), 201
 
-    else:  # GET
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM teams")
-            teams = cursor.fetchall()
-            return jsonify(teams), 200
+# PUT - update team
+@app.route('/teams/<int:id>', methods=['PUT'])
+def update_team(id):
+    data = request.get_json()
+    name = data.get('name')
+    coach = data.get('coach')
+    city = data.get('city')
 
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM teams WHERE id=?", (id,))
+        if not cursor.fetchone():
+            return jsonify({"error": "Team not found"}), 404
 
+        cursor.execute("UPDATE teams SET name=?, coach=?, city=? WHERE id=?", (name, coach, city, id))
+        conn.commit()
+        return jsonify({"message": "Team updated successfully"}), 200
+
+# DELETE - delete team
+@app.route('/teams/<int:id>', methods=['DELETE'])
+def delete_team(id):
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM teams WHERE id=?", (id,))
+        if not cursor.fetchone():
+            return jsonify({"error": "Team not found"}), 404
+
+        cursor.execute("DELETE FROM teams WHERE id=?", (id,))
+        conn.commit()
+        return jsonify({"message": "Team deleted successfully"}), 200
+
+# Run the app
 if __name__ == '__main__':
     init_db()
     app.run(debug=True)
