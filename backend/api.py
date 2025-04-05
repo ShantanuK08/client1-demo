@@ -22,33 +22,47 @@ def init_db():
         ''')
         conn.commit()
 
-# GET all teams and POST new team
-@app.route('/teams', methods=['GET', 'POST'])
-def teams():
-    if request.method == 'GET':
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM teams")
-            teams = cursor.fetchall()
-            return jsonify(teams), 200
+# ✅ GET all teams - correct usage
+@app.route('/team', methods=['GET'])
+def get_teams():
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM teams")
+        rows = cursor.fetchall()
+        teams = []
+        for row in rows:
+            teams.append({
+                "id": row[0],
+                "name": row[1],
+                "coach": row[2],
+                "city": row[3]
+            })
+        return jsonify(teams), 200
 
-    if request.method == 'POST':
-        data = request.get_json()
-        name = data.get('name')
-        coach = data.get('coach')
-        city = data.get('city')
+# ✅ Protect against accidental GET on /teams
+@app.route('/teams', methods=['GET'])
+def block_get_teams():
+    return jsonify({"error": "GET method not allowed on /teams. Use /team instead."}), 405
 
-        if not name:
-            return jsonify({"error": "Team name is required"}), 400
+# ✅ POST new team
+@app.route('/teams', methods=['POST'])
+def add_team():
+    data = request.get_json()
+    name = data.get('name')
+    coach = data.get('coach')
+    city = data.get('city')
 
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO teams (name, coach, city) VALUES (?, ?, ?)", (name, coach, city))
-            team_id = cursor.lastrowid
-            conn.commit()
-            return jsonify({"message": "Team added successfully", "id": team_id}), 201
+    if not name:
+        return jsonify({"error": "Team name is required"}), 400
 
-# PUT - update team
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO teams (name, coach, city) VALUES (?, ?, ?)", (name, coach, city))
+        team_id = cursor.lastrowid
+        conn.commit()
+        return jsonify({"message": "Team added successfully", "id": team_id}), 201
+
+# ✅ PUT - update team
 @app.route('/teams/<int:id>', methods=['PUT'])
 def update_team(id):
     data = request.get_json()
@@ -66,7 +80,7 @@ def update_team(id):
         conn.commit()
         return jsonify({"message": "Team updated successfully"}), 200
 
-# DELETE - delete team
+# ✅ DELETE - delete team
 @app.route('/teams/<int:id>', methods=['DELETE'])
 def delete_team(id):
     with sqlite3.connect(DB_PATH) as conn:
